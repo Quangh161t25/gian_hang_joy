@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Check Giá - JOY Store</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/check-gia.css">
+</head>
+
+<body>
+  <div id="loadingMask" class="loading-mask">
+    <div class="spinner"></div>
+    <p>Đang tải dữ liệu...</p>
+  </div>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-title">JOY STORE</div>
+      <nav class="nav-list" aria-label="Module">
+        <button type="button" class="nav-item active" data-module="SP_PM">
+          <i data-lucide="package"></i>
+          <span>SP_PM</span>
+        </button>
+        <button type="button" class="nav-item" data-module="CHECK_GIA">
+          <i data-lucide="calculator"></i>
+          <span>CHECK GIÁ</span>
+        </button>
+      </nav>
+    </aside>
+
+    <main class="page">
+      <section class="topbar">
+        <div class="page-heading">
+          <h1 id="pageTitle">SP_PM</h1>
+          <p id="pageSubtitle">Dữ liệu sản phẩm từ sheet SP_PM</p>
+        </div>
+        <div class="toolbar">
+          <label class="search-container" for="globalSearch">
+            <i data-lucide="search"></i>
+            <input type="text" id="globalSearch" class="search-input" placeholder="Tìm kiếm nhanh...">
+          </label>
+          <button type="button" class="action-btn" id="reloadBtn">
+            <i data-lucide="refresh-cw"></i>
+            Tải lại
+          </button>
+          <button type="button" class="action-btn add-btn" id="addNewBtn">
+            <i data-lucide="plus"></i>
+            Thêm mới
+          </button>
+        </div>
+      </section>
+
+      <section class="id-filter-panel" id="idFilterPanel" hidden>
+        <div class="id-filter-row">
+          <span class="id-filter-label">ID 1 ký tự</span>
+          <div class="id-filter-buttons" id="idPrefixOneButtons"></div>
+        </div>
+        <div class="id-filter-row">
+          <span class="id-filter-label">ID 2 ký tự</span>
+          <div class="id-filter-buttons" id="idPrefixTwoButtons"></div>
+        </div>
+      </section>
+
+      <section class="table-shell">
+        <table>
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </section>
+      <section class="pagination" id="pagination"></section>
+    </main>
+  </div>
+
+  <script src="assets/config.js"></script>
+  <script src="assets/check-gia.js"></script>
+</body>
+
+</html>
