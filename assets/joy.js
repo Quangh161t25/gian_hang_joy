@@ -2,7 +2,7 @@
 const UP_PARAM = new URLSearchParams(window.location.search).get('up') || '';
 
 const JOY_TAB_STORAGE_KEY = 'joyActiveTab';
-const JOY_VALID_TABS = ['SP_PM', 'SP_SHOPEE', 'DH_S', 'DH_SHOPE', 'DH_SHOPE_CT', 'ANH'];
+const JOY_VALID_TABS = ['SP_PM', 'DH_S'];
 
 let currentTab = 'SP_PM', allData = [], accessToken = null, tokenExpiry = 0;
 let currentPage = 1, rowsPerPage = 100, filteredData = [];
@@ -37,11 +37,7 @@ async function switchTab(tabName) {
     const uploadBtn = document.getElementById('uploadBtn');
     const tabLabels = {
         'SP_PM': 'SP_PM',
-        'SP_SHOPEE': 'SP_SHOPEE',
-        'ANH': 'QUẢN LÝ ẢNH',
-        'DH_S': 'ĐƠN HÀNG SHOPEE',
-        'DH_SHOPE': 'ĐƠN HÀNG UNIQUE',
-        'DH_SHOPE_CT': 'ĐƠN HÀNG CHI TIẾT'
+        'DH_S': 'ĐƠN HÀNG SHOPEE'
     };
 
     document.querySelectorAll('.tab').forEach(t => {
@@ -80,15 +76,11 @@ async function switchTab(tabName) {
             pagination.style.display = 'flex';
         }
         headerActions.style.display = 'flex';
-        pageTitle.innerText = tabName === 'DH_SHOPE' ? 'ĐƠN HÀNG SHOPEE (UNIQUE)' : tabName === 'DH_SHOPE_CT' ? 'ĐƠN HÀNG CHI TIẾT' : tabName === 'DH_S' ? 'ĐƠN HÀNG SHOPEE (TẤT CẢ)' : 'QUẢN LÝ SẢN PHẨM';
+        pageTitle.innerText = tabName === 'DH_S' ? 'ĐƠN HÀNG SHOPEE (TẤT CẢ)' : 'QUẢN LÝ SẢN PHẨM';
         if (uploadBtn) {
-            if (tabName === 'DH_SHOPE' || tabName === 'DH_SHOPE_CT') {
-                uploadBtn.style.display = 'none';
-            } else {
-                uploadBtn.style.display = 'flex';
-                uploadBtn.innerHTML = `<i data-lucide="upload" style="width:18px;"></i> ${tabName === 'DH_S' ? 'Tải Excel Shopee Lên' : 'Tải Sản Phẩm Lên'}`;
-                lucide.createIcons();
-            }
+            uploadBtn.style.display = 'flex';
+            uploadBtn.innerHTML = `<i data-lucide="upload" style="width:18px;"></i> ${tabName === 'DH_S' ? 'Tải Excel Shopee Lên' : 'Tải Sản Phẩm Lên'}`;
+            lucide.createIcons();
         }
         if (updateGiaSpBtn && tabName === 'DH_S') {
             updateGiaSpBtn.style.display = 'flex';
@@ -234,7 +226,6 @@ async function init() {
     initDragAndDrop();
     if (UP_PARAM) {
         await fetchData();
-        openImageManager(UP_PARAM);
     } else {
         let saved = '';
         try { saved = sessionStorage.getItem(JOY_TAB_STORAGE_KEY) || ''; } catch (_) { }
