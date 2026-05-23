@@ -110,18 +110,29 @@ function renderDhSTables() {
     const detailRows = selectedDhSOrderCode
         ? sortedRows.filter(row => normalizeOrderCode(row[0]) === selectedDhSOrderCode)
         : sortedRows;
+    let totalProfit = 0;
 
     document.getElementById('dhSOrderBody').innerHTML = uniqueRows.map(row => {
         const mdh = normalizeOrderCode(row[0]);
         const activeClass = mdh === selectedDhSOrderCode ? ' active' : '';
         const metrics = calculateDhSOrderMetrics(row, rowsByOrder.get(mdh) || [row]);
         metrics.soLanMua = buyerPurchaseCounts.get(String(row[54] || '').trim()) || 0;
+        totalProfit += metrics.loiNhuan;
         return `<tr class="dh-s-order-row${activeClass}" onclick="setSelectedDhSOrder('${mdh.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">${tabConfig.orderCols.map(srcIdx => renderDhSOrderCell(row, srcIdx, metrics)).join('')}</tr>`;
     }).join('');
+
+    renderProfitSummary(totalProfit);
 
     document.getElementById('dhSDetailBody').innerHTML = detailRows.map(row => {
         return `<tr>${tabConfig.detailCols.map(srcIdx => renderDhSCell(row, srcIdx)).join('')}</tr>`;
     }).join('');
+}
+
+function renderProfitSummary(totalProfit) {
+    const summary = document.getElementById('profitSummary');
+    if (!summary) return;
+    const valueEl = summary.querySelector('strong');
+    if (valueEl) valueEl.textContent = formatCurrency(totalProfit);
 }
 
 function excelIndexToColName(idx) {

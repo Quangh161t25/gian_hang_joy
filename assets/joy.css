@@ -188,6 +188,28 @@ h1 {
     accent-color: var(--primary);
 }
 
+.profit-summary {
+    height: 34px;
+    min-width: 180px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid #fecdd3;
+    background: #fff1f2;
+    color: #9f1239;
+    border-radius: 8px;
+    padding: 0 10px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.profit-summary strong {
+    color: #e11d48;
+    font-size: 0.95rem;
+}
+
 .action-btn {
     height: 38px;
     border: none;
