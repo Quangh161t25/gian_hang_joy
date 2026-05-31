@@ -2,14 +2,68 @@
 const UP_PARAM = new URLSearchParams(window.location.search).get('up') || '';
 
 const JOY_TAB_STORAGE_KEY = 'joyActiveTab';
-const JOY_VALID_TABS = ['SP_PM', 'DH_S'];
+const JOY_VALID_TABS = ['SP_PM', 'DH_S', 'THU_CHI'];
 
-let currentTab = 'SP_PM', allData = [], accessToken = null, tokenExpiry = 0;
+let currentTab = 'DH_S', allData = [], accessToken = null, tokenExpiry = 0;
 let currentPage = 1, rowsPerPage = 100, filteredData = [];
 let selectedDhSOrderCode = '';
 let selectedTinhTrangFilter = '';
+let selectedThuChiLoaiFilter = '';
+let thuChiOrderCodes = new Set();
 /** Map tên tab (tên sheet) → sheetId Google, cache nhẹ cho batchUpdate */
 let sheetTitleToIdCache = null;
+
+const THU_CHI_NGAY_COL = 1;
+
+function showToast(message, type = 'info') {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 20);
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 180);
+    }, 3600);
+}
+
+function askConfirm(message) {
+    return new Promise(resolve => {
+        let modal = document.getElementById('confirmModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'confirmModal';
+            modal.className = 'confirm-mask';
+            modal.innerHTML = `
+                <div class="confirm-card">
+                    <div class="confirm-title">Xác nhận</div>
+                    <div class="confirm-message"></div>
+                    <div class="confirm-actions">
+                        <button type="button" class="secondary-btn" data-confirm="no">Hủy</button>
+                        <button type="button" class="action-btn action-success" data-confirm="yes">OK</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        modal.querySelector('.confirm-message').textContent = message;
+        modal.style.display = 'flex';
+        const done = value => {
+            modal.style.display = 'none';
+            modal.querySelector('[data-confirm="yes"]').onclick = null;
+            modal.querySelector('[data-confirm="no"]').onclick = null;
+            resolve(value);
+        };
+        modal.querySelector('[data-confirm="yes"]').onclick = () => done(true);
+        modal.querySelector('[data-confirm="no"]').onclick = () => done(false);
+    });
+}
 
 function toggleSidebar() {
     document.body.classList.toggle('sidebar-collapsed');
@@ -42,7 +96,7 @@ async function switchTab(tabName) {
 
     document.querySelectorAll('.tab').forEach(t => {
         t.classList.remove('active');
-        if (t.innerText === tabLabels[tabName]) t.classList.add('active');
+        if (t.innerText === (tabLabels[tabName] || tabName)) t.classList.add('active');
     });
 
     const tableWrapper = document.getElementById('tableWrapper');
@@ -52,7 +106,12 @@ async function switchTab(tabName) {
     const headerActions = document.getElementById('headerActions');
     const updateGiaSpBtn = document.getElementById('updateGiaSpBtn');
     const updatePiShipBtn = document.getElementById('updatePiShipBtn');
+    const recalcDhSBtn = document.getElementById('recalcDhSBtn');
+    const addThuChiBtn = document.getElementById('addThuChiBtn');
     const dateFilterGroup = document.getElementById('dateFilterGroup');
+    const thuChiFilterGroup = document.getElementById('thuChiFilterGroup');
+    const dhSNoteInput = document.getElementById('dhSNoteInput');
+    const dhSStatusNote = document.getElementById('dhSStatusNote');
     const pageTitle = document.getElementById('pageTitle');
 
     // Reset all
@@ -63,7 +122,12 @@ async function switchTab(tabName) {
     imageManager.style.display = 'none';
     if (updateGiaSpBtn) updateGiaSpBtn.style.display = 'none';
     if (updatePiShipBtn) updatePiShipBtn.style.display = 'none';
+    if (recalcDhSBtn) recalcDhSBtn.style.display = 'none';
+    if (addThuChiBtn) addThuChiBtn.style.display = 'none';
     if (dateFilterGroup) dateFilterGroup.style.display = 'none';
+    if (thuChiFilterGroup) thuChiFilterGroup.style.display = 'none';
+    if (dhSNoteInput) dhSNoteInput.style.display = 'none';
+    if (dhSStatusNote) dhSStatusNote.style.display = 'none';
 
     if (tabName === 'ANH') {
         imageManager.style.display = 'block';
@@ -77,8 +141,9 @@ async function switchTab(tabName) {
         }
         headerActions.style.display = 'flex';
         pageTitle.innerText = tabName === 'DH_S' ? 'ĐƠN HÀNG SHOPEE (TẤT CẢ)' : 'QUẢN LÝ SẢN PHẨM';
+        if (tabName === 'THU_CHI') pageTitle.innerText = 'THU CHI';
         if (uploadBtn) {
-            uploadBtn.style.display = 'flex';
+            uploadBtn.style.display = tabName === 'THU_CHI' ? 'none' : 'flex';
             uploadBtn.innerHTML = `<i data-lucide="upload" style="width:18px;"></i> ${tabName === 'DH_S' ? 'Tải Excel Shopee Lên' : 'Tải Sản Phẩm Lên'}`;
             lucide.createIcons();
         }
@@ -90,15 +155,33 @@ async function switchTab(tabName) {
             updatePiShipBtn.style.display = 'flex';
             lucide.createIcons();
         }
+        if (recalcDhSBtn && tabName === 'DH_S') {
+            recalcDhSBtn.style.display = 'flex';
+            lucide.createIcons();
+        }
+        if (addThuChiBtn && tabName === 'THU_CHI') {
+            addThuChiBtn.style.display = 'flex';
+            lucide.createIcons();
+        }
         if (dateFilterGroup && tabName === 'DH_S') {
             dateFilterGroup.style.display = 'flex';
-                }
+        }
+        if (dhSNoteInput && tabName === 'DH_S') {
+            dhSNoteInput.style.display = 'block';
+            dhSNoteInput.value = '';
+        }
+        if (dhSStatusNote && tabName === 'DH_S') {
+            dhSStatusNote.style.display = 'block';
+        }
+        if (thuChiFilterGroup && tabName === 'THU_CHI') {
+            thuChiFilterGroup.style.display = 'flex';
+        }
 
-                document.getElementById('searchInput').value = '';
-                if (tabName === 'DH_S') setDhSDateFilterToTodayIfEmpty();
-                currentPage = 1;
-                await fetchData();
-            }
+        document.getElementById('searchInput').value = '';
+        if (tabName === 'DH_S') setDhSDateFilterToTodayIfEmpty();
+        currentPage = 1;
+        await fetchData();
+    }
 }
 
 async function fetchData() {
@@ -115,17 +198,39 @@ async function fetchData() {
             arr._sheetRow = i + 2;
             return arr;
         });
+        if (currentTab === 'DH_S') await loadThuChiOrderCodes(token);
         if (currentTab === 'DH_SHOPE') allData = sortDhShopeRowsByNgayDesc(allData);
         if (currentTab === 'DH_S') allData = sortDhSRowsByNgayDatHangDesc(allData);
-        filteredData = currentTab === 'DH_S' ? applyDhSFilters([...allData]) : [...allData];
+        if (currentTab === 'THU_CHI') allData = sortThuChiRowsByNgayDesc(allData);
+        if (currentTab === 'DH_S') {
+            filteredData = applyDhSFilters([...allData]);
+        } else if (currentTab === 'THU_CHI') {
+            filteredData = applyThuChiFilters([...allData]);
+        } else {
+            filteredData = [...allData];
+        }
         renderHeaders();
         renderTable();
     } catch (e) {
         console.error("Lỗi khi tải dữ liệu:", e);
-        alert("Không thể tải dữ liệu. Vui lòng kiểm tra lại sheet '" + currentTab + "' có tồn tại không.");
+        showToast("Không thể tải dữ liệu. Vui lòng kiểm tra lại sheet '" + currentTab + "' có tồn tại không.", 'error');
     } finally {
         document.getElementById('loading').style.display = 'none';
     }
+}
+
+async function loadThuChiOrderCodes(token) {
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.spreadsheetId}/values/THU_CHI!E2:E`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) {
+        thuChiOrderCodes = new Set();
+        return;
+    }
+    const data = await res.json();
+    thuChiOrderCodes = new Set((data.values || [])
+        .map(row => normalizeOrderCode(row[0]))
+        .filter(Boolean));
 }
 
 function renderHeaders() {
@@ -135,6 +240,15 @@ function renderHeaders() {
     }
 
     const head = document.getElementById('tableHead');
+
+    if (currentTab === 'THU_CHI') {
+        head.innerHTML = `<tr>
+            <th>ngay</th><th>thu_chi</th><th>truong</th><th>mdh</th><th>mvd</th><th>so_tien</th>
+            <th>tiền còn lại</th><th>so_tien_loi_nhuan</th><th>tiền lợi nhuận còn lại</th><th>Xóa</th>
+        </tr>`;
+        return;
+    }
+
     const tabConfig = CONFIG.tabs[currentTab];
     const hiddenCols = tabConfig.hiddenCols || [];
     const headers = tabConfig.headers.filter((_, idx) => !hiddenCols.includes(idx));
@@ -176,10 +290,10 @@ async function getSheetTitleToIdMap(token) {
 async function deleteDataSheetRow(sheetRow1Based) {
     const rowNum = Number(sheetRow1Based);
     if (!rowNum || rowNum < 2) {
-        alert('Không xác định được dòng cần xóa.');
+        showToast('Không xác định được dòng cần xóa.', 'error');
         return;
     }
-    if (!confirm('Xóa dòng này trên Google Sheet? Thao tác không hoàn tác.')) return;
+    if (!await askConfirm('Xóa dòng này trên Google Sheet? Thao tác không hoàn tác.')) return;
 
     document.getElementById('loading').style.display = 'flex';
     document.querySelector('#loading p').innerText = 'Đang xóa dòng...';
@@ -215,7 +329,7 @@ async function deleteDataSheetRow(sheetRow1Based) {
         filterTable();
     } catch (e) {
         console.error(e);
-        alert('Không xóa được: ' + e.message);
+        showToast('Không xóa được: ' + e.message, 'error');
     } finally {
         document.getElementById('loading').style.display = 'none';
     }
@@ -242,18 +356,18 @@ function initDragAndDrop() {
     const overlay = document.getElementById('dropOverlay');
 
     window.addEventListener('dragover', (e) => {
-        if (currentTab === 'ANH') return;
+        if (currentTab === 'ANH' || currentTab === 'THU_CHI') return;
         e.preventDefault();
         overlay.classList.add('active');
     });
 
     window.addEventListener('dragleave', (e) => {
-        if (currentTab === 'ANH') return;
+        if (currentTab === 'ANH' || currentTab === 'THU_CHI') return;
         if (e.relatedTarget === null) overlay.classList.remove('active');
     });
 
     window.addEventListener('drop', (e) => {
-        if (currentTab === 'ANH') return;
+        if (currentTab === 'ANH' || currentTab === 'THU_CHI') return;
         e.preventDefault();
         overlay.classList.remove('active');
         if (e.dataTransfer.files.length > 0) {
@@ -291,6 +405,7 @@ const DH_SHOPE_NGAY_COL = 1;
 /** Cột Ngày đặt hàng trong tab DH_S raw Shopee. */
 const DH_S_NGAY_DAT_HANG_COL = 2;
 const DH_S_NGAY_UP_DON_COL = 63;
+const DH_S_GHI_CHU_COL = 62;
 const DH_S_PISHIP_COL = 64;
 const DH_S_PHI_THUE_COL = 65;
 const DH_S_PHI_KHAC_COL = 66;
@@ -299,6 +414,7 @@ const DH_S_GIA_SP_COL = 68;
 const DH_S_LOI_NHUAN_COL = 69;
 const DH_S_TINH_TRANG_COL = 70;
 const DH_S_TRANG_THAI_COL = 71;
+const DH_S_DEFAULT_TINH_TRANG = 'LÊN ĐƠN';
 
 /** Chuẩn hóa ngày để so sánh: DD/MM/YYYY, ISO, hoặc số serial Excel. Không parse được → xếp cuối. */
 function parseNgayForSort(raw) {
@@ -348,6 +464,20 @@ function sortDhShopeRowsByNgayDesc(rows) {
 
 function sortDhSRowsByNgayDatHangDesc(rows) {
     return sortRowsByNgayDesc(rows, DH_S_NGAY_DAT_HANG_COL);
+}
+
+function getThuChiTypeRank(row) {
+    return String(row?.[2] || '').trim().toLowerCase() === 'chi' ? 1 : 0;
+}
+
+function sortThuChiRowsByNgayDesc(rows) {
+    return [...rows].sort((a, b) => {
+        const dateDiff = parseNgayForSort(b[THU_CHI_NGAY_COL]) - parseNgayForSort(a[THU_CHI_NGAY_COL]);
+        if (dateDiff) return dateDiff;
+        const typeDiff = getThuChiTypeRank(a) - getThuChiTypeRank(b);
+        if (typeDiff) return typeDiff;
+        return getDataSheetRow(a) - getDataSheetRow(b);
+    });
 }
 
 function formatDateOnly(raw) {
@@ -405,6 +535,103 @@ function todayDateDisplay() {
     return `${dd}/${mm}/${yyyy}`;
 }
 
+function formatDateDisplay(raw) {
+    const iso = formatDateOnly(raw);
+    const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : (raw || '');
+}
+
+function generateThuChiId() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+    return `TC${stamp}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+}
+
+function getThuChiFormValues() {
+    return {
+        id: generateThuChiId(),
+        ngay: formatDateDisplay(document.getElementById('thuChiNgayInput')?.value || todayDateOnly()),
+        thuChi: String(document.getElementById('thuChiLoaiInput')?.value || 'thu').trim(),
+        truong: String(document.getElementById('thuChiTruongInput')?.value || '').trim(),
+        mdh: String(document.getElementById('thuChiMdhInput')?.value || '').trim(),
+        mvd: String(document.getElementById('thuChiMvdInput')?.value || '').trim(),
+        soTien: parseMoney(document.getElementById('thuChiSoTienInput')?.value || 0),
+        soTienLoiNhuan: parseMoney(document.getElementById('thuChiSoTienLoiNhuanInput')?.value || 0)
+    };
+}
+
+function openThuChiForm(defaults = {}) {
+    const modal = document.getElementById('thuChiModal');
+    if (!modal) return;
+    document.getElementById('thuChiNgayInput').value = defaults.ngay || todayDateOnly();
+    document.getElementById('thuChiLoaiInput').value = defaults.thuChi || 'thu';
+    document.getElementById('thuChiTruongInput').value = defaults.truong || '';
+    document.getElementById('thuChiMdhInput').value = defaults.mdh || '';
+    document.getElementById('thuChiMvdInput').value = defaults.mvd || '';
+    document.getElementById('thuChiSoTienInput').value = defaults.soTien ?? '';
+    if (document.getElementById('thuChiSoTienLoiNhuanInput')) {
+        document.getElementById('thuChiSoTienLoiNhuanInput').value = defaults.soTienLoiNhuan ?? '';
+    }
+    modal.style.display = 'flex';
+    lucide.createIcons();
+}
+
+function closeThuChiForm() {
+    const modal = document.getElementById('thuChiModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function appendThuChiRow(values) {
+    const row = [
+        values.id || generateThuChiId(),
+        formatDateDisplay(values.ngay || todayDateOnly()),
+        values.thuChi || 'thu',
+        values.truong || '',
+        values.mdh || '',
+        values.mvd || '',
+        values.soTien ?? 0,
+        values.soTienLoiNhuan ?? 0
+    ];
+    const token = await getAccessToken();
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.spreadsheetId}/values/THU_CHI!A2:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [row] })
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || 'Lỗi thêm THU_CHI');
+    }
+    return row;
+}
+
+async function submitThuChiForm(event) {
+    event.preventDefault();
+    const values = getThuChiFormValues();
+    if (!values.truong) {
+        showToast('Vui lòng nhập trường.', 'warning');
+        return;
+    }
+    if (!values.soTien) {
+        showToast('Vui lòng nhập số tiền.', 'warning');
+        return;
+    }
+    document.getElementById('loading').style.display = 'flex';
+    document.querySelector('#loading p').innerText = 'Đang thêm thu chi...';
+    try {
+        await appendThuChiRow(values);
+        closeThuChiForm();
+        if (currentTab === 'THU_CHI') await fetchData();
+        showToast('Đã thêm thu chi thành công.', 'success');
+    } catch (err) {
+        console.error(err);
+        showToast('Lỗi khi thêm thu chi: ' + err.message, 'error');
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
 function normalizeHeaderName(name) {
     return String(name || '')
         .normalize('NFD')
@@ -438,6 +665,8 @@ function mapDhSRowsByHeaders(rows) {
     const dataRows = rows.slice(1);
     return dataRows.map(row => tabConfig.fullHeaders.map((header, targetIdx) => {
         if (targetIdx === DH_S_NGAY_UP_DON_COL) return uploadDate;
+        if (targetIdx === DH_S_TINH_TRANG_COL) return DH_S_DEFAULT_TINH_TRANG;
+        if (targetIdx === DH_S_TRANG_THAI_COL) return deriveDhSTrangThai(DH_S_DEFAULT_TINH_TRANG);
         const sourceIdx = getDhSHeaderAliases(header)
             .map(alias => headerIndex.get(normalizeHeaderName(alias)))
             .find(idx => idx !== undefined);
@@ -452,6 +681,8 @@ function normalizeDhSDateColumns(rows) {
         if (Array.isArray(next)) {
             next[DH_S_NGAY_DAT_HANG_COL] = formatDateOnly(next[DH_S_NGAY_DAT_HANG_COL]);
             while (next.length < targetLength) next.push('');
+            if (!String(next[DH_S_TINH_TRANG_COL] || '').trim()) next[DH_S_TINH_TRANG_COL] = DH_S_DEFAULT_TINH_TRANG;
+            if (!String(next[DH_S_TRANG_THAI_COL] || '').trim()) next[DH_S_TRANG_THAI_COL] = deriveDhSTrangThai(next[DH_S_TINH_TRANG_COL]);
             if (next.length > targetLength) next.length = targetLength;
         }
         return next;
@@ -576,6 +807,26 @@ function extractDetailsForDhShopeCt(dhSRows, spPmRows) {
     });
 }
 
+function buildThuChiBalanceMap(rows) {
+    const byRow = new Map();
+    let balance = 0;
+    let profitBalance = 0;
+    const orderedRows = [...rows].sort((a, b) => {
+        const dateDiff = parseNgayForSort(a[THU_CHI_NGAY_COL]) - parseNgayForSort(b[THU_CHI_NGAY_COL]);
+        if (dateDiff) return dateDiff;
+        return getDataSheetRow(a) - getDataSheetRow(b);
+    });
+    for (const row of orderedRows) {
+        const type = String(row[2] || '').trim().toLowerCase();
+        const amount = parseMoney(row[6]);
+        const profitAmount = parseMoney(row[7] || (type === 'chi' ? row[6] : 0));
+        balance += type === 'chi' ? -amount : amount;
+        profitBalance += type === 'chi' ? -profitAmount : profitAmount;
+        byRow.set(row, { balance, profitBalance });
+    }
+    return byRow;
+}
+
 function renderTable() {
     if (currentTab === 'DH_S') {
         renderDhSTables();
@@ -588,13 +839,31 @@ function renderTable() {
     const start = (currentPage - 1) * rowsPerPage;
     const end = start + rowsPerPage;
     const pageData = filteredData.slice(start, end);
+    const thuChiBalanceByRow = currentTab === 'THU_CHI' ? buildThuChiBalanceMap(allData) : null;
 
     tbody.innerHTML = pageData.map(row => {
+        if (currentTab === 'THU_CHI') {
+            const rowIdx = getDataSheetRow(row);
+            const balances = thuChiBalanceByRow.get(row) || { balance: 0, profitBalance: 0 };
+            return `<tr>
+                <td>${formatDateDisplay(row[1])}</td>
+                <td>${row[2] || ''}</td>
+                <td>${row[3] || ''}</td>
+                <td>${row[4] || ''}</td>
+                <td>${row[5] || ''}</td>
+                <td class="price-cell">${formatCurrency(row[6])}</td>
+                <td class="price-cell">${formatCurrency(balances.balance)}</td>
+                <td class="price-cell">${formatCurrency(row[7])}</td>
+                <td class="price-cell">${formatCurrency(balances.profitBalance)}</td>
+                <td><button type="button" class="btn-delete" onclick="deleteDataSheetRow(${rowIdx})">Xóa</button></td>
+            </tr>`;
+        }
+
         const hiddenCols = tabConfig.hiddenCols || [];
         const colIndices = tabConfig.displayCols || null;
         const visibleCols = colIndices
             ? colIndices.map(srcIdx => ({ srcIdx, cell: row[srcIdx] }))
-            : row.map((cell, idx) => hiddenCols.includes(idx) ? null : ({ srcIdx: idx, cell })).filter(Boolean);
+            : tabConfig.headers.map((_, idx) => hiddenCols.includes(idx) ? null : ({ srcIdx: idx, cell: row[idx] })).filter(Boolean);
 
         const cells = visibleCols.map(({ srcIdx, cell }, displayIdx) => {
             if (srcIdx === tabConfig.imgCol && cell) {
@@ -613,6 +882,9 @@ function renderTable() {
             if (currentTab === 'DH_S' && srcIdx === DH_S_NGAY_DAT_HANG_COL) {
                 return `<td>${formatDateOnly(cell) || ''}</td>`;
             }
+            if (currentTab === 'THU_CHI' && srcIdx === THU_CHI_NGAY_COL) {
+                return `<td>${formatDateDisplay(cell)}</td>`;
+            }
             const cellStr = String(cell || '').trim();
             if (cellStr.startsWith('http://') || cellStr.startsWith('https://')) {
                 const parts = cellStr.split(',');
@@ -630,6 +902,8 @@ function renderTable() {
         } else if (currentTab === 'SP_SHOPEE' || currentTab === 'DH_SHOPE') {
             extraCols = `<td><button type="button" class="btn-delete" onclick="deleteDataSheetRow(${sr})">Xóa</button></td>`;
         }
+
+        // THU_CHI extraCols is now handled completely at the top of the map function
 
         return `<tr>${cells}${extraCols}</tr>`;
     }).join('');
@@ -671,6 +945,7 @@ function filterTable() {
     if (currentTab === 'DH_S') filteredData = applyDhSFilters(filteredData);
     if (currentTab === 'DH_SHOPE') filteredData = sortDhShopeRowsByNgayDesc(filteredData);
     if (currentTab === 'DH_S') filteredData = sortDhSRowsByNgayDatHangDesc(filteredData);
+    if (currentTab === 'THU_CHI') filteredData = sortThuChiRowsByNgayDesc(applyThuChiFilters(filteredData));
     currentPage = 1;
     renderTable();
 }
@@ -708,9 +983,29 @@ function applyDhSFilters(rows) {
     return result;
 }
 
+function applyThuChiFilters(rows) {
+    const fromTime = dateInputToTime(document.getElementById('thuChiDateFromInput')?.value || '', false);
+    const toTime = dateInputToTime(document.getElementById('thuChiDateToInput')?.value || '', true);
+    const loai = String(selectedThuChiLoaiFilter || '').trim().toLowerCase();
+    const truong = String(document.getElementById('thuChiTruongFilterInput')?.value || '').trim().toLowerCase();
+
+    return rows.filter(row => {
+        const rowTime = parseNgayForSort(row[1]);
+        const rowLoai = String(row[2] || '').trim().toLowerCase();
+        const rowTruong = String(row[3] || '').trim().toLowerCase();
+
+        if (rowTime < fromTime || rowTime > toTime) return false;
+        if (loai && rowLoai !== loai) return false;
+        if (truong && !rowTruong.includes(truong)) return false;
+        return true;
+    });
+}
+
 function setDhSDateFilterToTodayIfEmpty() {
     const fromInput = document.getElementById('dateFromInput');
     const toInput = document.getElementById('dateToInput');
+    const sameDateInput = document.getElementById('sameDateFilterInput');
+    if (sameDateInput) sameDateInput.checked = true;
     if (!fromInput || !toInput || fromInput.value || toInput.value) return;
     const val = todayDateOnly();
     fromInput.value = val;
@@ -737,9 +1032,52 @@ function handleDateFilterChange(inputId) {
     syncSameDateFilter(inputId);
 }
 
+function toDateInputValue(date) {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+function setDhSQuickDateFilter(mode) {
+    const fromInput = document.getElementById('dateFromInput');
+    const toInput = document.getElementById('dateToInput');
+    const sameDateInput = document.getElementById('sameDateFilterInput');
+    if (!fromInput || !toInput) return;
+
+    const today = new Date();
+    const start = new Date(today);
+    const end = new Date(today);
+
+    if (mode === 'yesterday') {
+        start.setDate(start.getDate() - 1);
+        end.setDate(end.getDate() - 1);
+    } else if (mode === 'week') {
+        const day = start.getDay() || 7;
+        start.setDate(start.getDate() - day + 1);
+    } else if (mode === 'month') {
+        start.setDate(1);
+    } else if (mode === '3months') {
+        start.setMonth(start.getMonth() - 3);
+    }
+
+    fromInput.value = toDateInputValue(start);
+    toInput.value = toDateInputValue(end);
+    if (sameDateInput) sameDateInput.checked = mode === 'today' || mode === 'yesterday';
+    filterTable();
+}
+
 function setTinhTrangFilter(value) {
     selectedTinhTrangFilter = value;
     document.querySelectorAll('#tinhTrangFilterButtons .status-filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.value === value);
+    });
+    filterTable();
+}
+
+function setThuChiLoaiFilter(value) {
+    selectedThuChiLoaiFilter = value;
+    document.querySelectorAll('#thuChiLoaiFilterButtons .status-filter-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.value === value);
     });
     filterTable();
@@ -755,6 +1093,18 @@ function stepDateFilter(inputId, deltaDays) {
     const dd = String(base.getDate()).padStart(2, '0');
     input.value = `${yyyy}-${mm}-${dd}`;
     syncSameDateFilter(inputId);
+}
+
+function stepThuChiDateFilter(inputId, deltaDays) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const base = input.value ? new Date(`${input.value}T00:00:00`) : new Date();
+    base.setDate(base.getDate() + deltaDays);
+    const yyyy = base.getFullYear();
+    const mm = String(base.getMonth() + 1).padStart(2, '0');
+    const dd = String(base.getDate()).padStart(2, '0');
+    input.value = `${yyyy}-${mm}-${dd}`;
+    filterTable();
 }
 
 async function handleFileUpload(event) {
@@ -791,7 +1141,7 @@ function readExcelRows(file) {
 async function processFiles(files) {
     const excelFiles = files.filter(f => /\.(xlsx|xls|csv)$/i.test(f.name));
     if (!excelFiles.length) {
-        alert("Vui lòng tải lên file Excel hoặc CSV.");
+        showToast("Vui lòng tải lên file Excel hoặc CSV.", 'warning');
         return;
     }
 
@@ -799,7 +1149,7 @@ async function processFiles(files) {
     const confirmMessage = currentTab === 'DH_S'
         ? `Dữ liệu từ ${excelFiles.length} file (${fileNames}) sẽ được THÊM MỚI vào sheet 'DH_S' và cập nhật unique vào 'DH_SHOPE'. Tiếp tục?`
         : `Dữ liệu từ ${excelFiles.length} file (${fileNames}) sẽ ghi đè sheet '${currentTab}' (xóa dữ liệu cũ). Tiếp tục?`;
-    if (!confirm(confirmMessage)) return;
+    if (!await askConfirm(confirmMessage)) return;
 
     document.getElementById('loading').style.display = 'flex';
     document.querySelector('#loading p').innerText = `Đang xử lý ${excelFiles.length} file và cập nhật Google Sheets...`;
@@ -841,7 +1191,7 @@ async function processFiles(files) {
             const { newRows, skippedOrderCount, newOrderCount } = filterRowsByNewOrderCode(allRowsToUpload, existingDhSRows);
 
             if (!newRows.length) {
-                alert(`Không có dữ liệu mới để tải lên. ${skippedOrderCount} Mã đơn hàng trong file đã tồn tại trên DH_S nên đã bỏ qua.`);
+                showToast(`Không có dữ liệu mới để tải lên. ${skippedOrderCount} Mã đơn hàng trong file đã tồn tại trên DH_S nên đã bỏ qua.`, 'warning');
                 return;
             }
 
@@ -907,7 +1257,7 @@ async function processFiles(files) {
                 }
             }
             const skippedText = skippedOrderCount ? ` Đã bỏ qua ${skippedOrderCount} Mã đơn hàng đã tồn tại.` : '';
-            alert(`Đã thêm ${newRows.length} dòng (${newOrderCount} Mã đơn hàng mới) vào DH_S, cập nhật ${uniqueRows.length} đơn vào DH_SHOPE và ${detailRows.length} dòng vào DH_SHOPE_CT thành công!${skippedText}`);
+            showToast(`Đã thêm ${newRows.length} dòng (${newOrderCount} Mã đơn hàng mới) vào DH_S, cập nhật ${uniqueRows.length} đơn vào DH_SHOPE và ${detailRows.length} dòng vào DH_SHOPE_CT thành công!${skippedText}`, 'success');
         } else {
             const tabConfig = CONFIG.tabs[currentTab];
             await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.spreadsheetId}/values/${tabConfig.clearRange}:clear`, {
@@ -923,14 +1273,14 @@ async function processFiles(files) {
                 const err = await updateRes.json();
                 throw new Error(err.error?.message || 'Lỗi cập nhật API');
             }
-            alert(`Đã tải dữ liệu từ ${excelFiles.length} file lên sheet '${currentTab}' thành công!`);
+            showToast(`Đã tải dữ liệu từ ${excelFiles.length} file lên sheet '${currentTab}' thành công!`, 'success');
         }
 
         try { sessionStorage.setItem(JOY_TAB_STORAGE_KEY, currentTab); } catch (_) { }
         location.reload();
     } catch (err) {
         console.error(err);
-        alert("Lỗi khi tải dữ liệu: " + err.message);
+        showToast("Lỗi khi tải dữ liệu: " + err.message, 'error');
     } finally {
         document.getElementById('loading').style.display = 'none';
     }

@@ -1,0 +1,228 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Sản Phẩm - JOY Store</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/joy.css">
+</head>
+
+<body>
+
+    <div id="loading" class="loading-mask">
+        <div class="spinner"></div>
+        <p>Đang tải dữ liệu...</p>
+    </div>
+
+    <div id="dropOverlay">
+        <div class="drop-message">
+            <i data-lucide="upload-cloud" style="width: 48px; height: 48px;"></i>
+            Thả file vào đây để tải sản phẩm lên ${currentTab}
+        </div>
+    </div>
+
+    <div class="header-container">
+        <div class="page-heading">
+            <h1 id="pageTitle">QUẢN LÝ SẢN PHẨM</h1>
+            <div id="dhSStatusNote" class="dh-s-status-note">
+                <strong>Ghi chú:</strong> HỦY = khách hủy trước khi ship lấy. HOÀN = khách lấy xong boom. TRẢ = khách nhận xong trả.
+            </div>
+            <textarea id="dhSNoteInput" class="dh-s-note-input" placeholder="Ghi chú" onkeydown="if(event.key==='Enter' && !event.shiftKey) this.blur()" onblur="updateSelectedDhSNote(this.value)"></textarea>
+        </div>
+        <div id="headerActions" class="header-actions">
+            <div class="toolbar">
+                <div class="toolbar-row toolbar-row-main">
+                    <div class="search-container">
+                        <i data-lucide="search" class="search-icon" style="width: 18px;"></i>
+                        <input type="text" id="searchInput" class="search-input" placeholder="Tìm kiếm nhanh..."
+                            oninput="filterTable()">
+                    </div>
+                    <div class="toolbar-actions">
+                        <button id="uploadBtn" class="action-btn action-primary" onclick="document.getElementById('fileInput').click()">
+                            <i data-lucide="upload" style="width:18px;"></i> Tải Excel Shopee Lên
+                        </button>
+                        <button id="updateGiaSpBtn" class="action-btn action-success" onclick="updateDhSGiaSp()">
+                            <i data-lucide="refresh-cw" style="width:18px;"></i> cn giá sp
+                        </button>
+                        <button id="updatePiShipBtn" class="action-btn action-purple" onclick="updateDhSPiShip()">
+                            <i data-lucide="truck" style="width:18px;"></i> cn piship
+                        </button>
+                        <button id="recalcDhSBtn" class="action-btn action-success" onclick="recalculateDhSRows()">
+                            <i data-lucide="calculator" style="width:18px;"></i> cập nhật lại
+                        </button>
+                        <button id="addThuChiBtn" class="action-btn action-success" onclick="openThuChiForm()">
+                            <i data-lucide="plus" style="width:18px;"></i> Thêm thu chi
+                        </button>
+                    </div>
+                </div>
+
+                <div id="dateFilterGroup" class="date-filter-group">
+                    <div class="filter-section">
+                        <div class="date-filter">
+                            <span>Từ</span>
+                            <button type="button" class="mini-btn" onclick="stepDateFilter('dateFromInput', -1)">-</button>
+                            <input type="date" id="dateFromInput" onchange="handleDateFilterChange('dateFromInput')">
+                            <button type="button" class="mini-btn" onclick="stepDateFilter('dateFromInput', 1)">+</button>
+                        </div>
+                        <div class="date-filter">
+                            <span>Tới</span>
+                            <button type="button" class="mini-btn" onclick="stepDateFilter('dateToInput', -1)">-</button>
+                            <input type="date" id="dateToInput" onchange="handleDateFilterChange('dateToInput')">
+                            <button type="button" class="mini-btn" onclick="stepDateFilter('dateToInput', 1)">+</button>
+                        </div>
+                        <label class="filter-check"><input type="checkbox" id="sameDateFilterInput" onchange="syncSameDateFilter('dateFromInput')"> ngày trùng</label>
+                        <label class="filter-check"><input type="checkbox" id="orderDateFilterInput" onchange="filterTable()"> ngày đặt hàng</label>
+                        <div class="status-filter-buttons quick-date-buttons">
+                            <button type="button" class="status-filter-btn" onclick="setDhSQuickDateFilter('today')">Hôm nay</button>
+                            <button type="button" class="status-filter-btn" onclick="setDhSQuickDateFilter('yesterday')">Hôm qua</button>
+                            <button type="button" class="status-filter-btn" onclick="setDhSQuickDateFilter('week')">Tuần này</button>
+                            <button type="button" class="status-filter-btn" onclick="setDhSQuickDateFilter('month')">Tháng này</button>
+                            <button type="button" class="status-filter-btn" onclick="setDhSQuickDateFilter('3months')">3 tháng</button>
+                        </div>
+                    </div>
+                    <div class="filter-section">
+                        <input type="text" id="orderCodeFilterInput" class="compact-filter-input" placeholder="Mã đơn hàng"
+                            oninput="filterTable()">
+                        <input type="text" id="buyerFilterInput" class="compact-filter-input" placeholder="Người Mua"
+                            oninput="filterTable()">
+                        <select id="trangThaiFilterInput" class="compact-filter-input" onchange="filterTable()">
+                            <option value="">Trạng thái</option>
+                            <option value="LÊN ĐƠN">LÊN ĐƠN</option>
+                            <option value="HỦY">HỦY</option>
+                            <option value="HOÀN">HOÀN</option>
+                            <option value="HOÀN THÀNH">HOÀN THÀNH</option>
+                        </select>
+                        <div class="status-filter-buttons" id="tinhTrangFilterButtons">
+                            <button type="button" class="status-filter-btn active" data-value="" onclick="setTinhTrangFilter('')">Tất cả</button>
+                            <button type="button" class="status-filter-btn" data-value="LÊN ĐƠN" onclick="setTinhTrangFilter('LÊN ĐƠN')">LÊN ĐƠN</button>
+                            <button type="button" class="status-filter-btn" data-value="HỦY" onclick="setTinhTrangFilter('HỦY')">HỦY</button>
+                            <button type="button" class="status-filter-btn" data-value="HOÀN" onclick="setTinhTrangFilter('HOÀN')">HOÀN</button>
+                            <button type="button" class="status-filter-btn" data-value="TRẢ" onclick="setTinhTrangFilter('TRẢ')">TRẢ</button>
+                            <button type="button" class="status-filter-btn" data-value="HOÀN THÀNH" onclick="setTinhTrangFilter('HOÀN THÀNH')">HOÀN THÀNH</button>
+                        </div>
+                        <div id="profitSummary" class="profit-summary">
+                            <span>Tổng lợi nhuận</span>
+                            <strong>0</strong>
+                        </div>
+                        <div id="tienThuVeSummary" class="profit-summary revenue-summary">
+                            <span>Tổng tiền thu về</span>
+                            <strong>0</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="thuChiFilterGroup" class="date-filter-group">
+                    <div class="filter-section">
+                        <div class="date-filter">
+                            <span>Từ</span>
+                            <button type="button" class="mini-btn" onclick="stepThuChiDateFilter('thuChiDateFromInput', -1)">-</button>
+                            <input type="date" id="thuChiDateFromInput" onchange="filterTable()">
+                            <button type="button" class="mini-btn" onclick="stepThuChiDateFilter('thuChiDateFromInput', 1)">+</button>
+                        </div>
+                        <div class="date-filter">
+                            <span>Tới</span>
+                            <button type="button" class="mini-btn" onclick="stepThuChiDateFilter('thuChiDateToInput', -1)">-</button>
+                            <input type="date" id="thuChiDateToInput" onchange="filterTable()">
+                            <button type="button" class="mini-btn" onclick="stepThuChiDateFilter('thuChiDateToInput', 1)">+</button>
+                        </div>
+                        <div class="status-filter-buttons" id="thuChiLoaiFilterButtons">
+                            <button type="button" class="status-filter-btn active" data-value="" onclick="setThuChiLoaiFilter('')">Tất cả</button>
+                            <button type="button" class="status-filter-btn" data-value="thu" onclick="setThuChiLoaiFilter('thu')">thu</button>
+                            <button type="button" class="status-filter-btn" data-value="chi" onclick="setThuChiLoaiFilter('chi')">chi</button>
+                        </div>
+                        <input type="text" id="thuChiTruongFilterInput" class="compact-filter-input" placeholder="Trường"
+                            oninput="filterTable()">
+                    </div>
+                </div>
+            </div>
+            <input type="file" id="fileInput" hidden multiple accept=".xlsx, .xls, .csv"
+                onchange="handleFileUpload(event)">
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="sidebar-toggle" onclick="toggleSidebar()" title="Thu gọn module">
+            <i data-lucide="panel-left-close" style="width:18px;"></i>
+        </button>
+        <div class="tab active" onclick="switchTab('DH_S')" title="ĐƠN HÀNG SHOPEE" data-short="ĐH">ĐƠN HÀNG SHOPEE</div>
+        <div class="tab" onclick="switchTab('THU_CHI')" title="THU CHI" data-short="TC">THU CHI</div>
+        <div class="tab" onclick="switchTab('SP_PM')" title="SP_PM" data-short="PM">SP_PM</div>
+    </div>
+
+    <div class="table-wrapper" id="tableWrapper">
+        <table id="dataTable">
+            <thead id="tableHead">
+                <!-- Headers will be injected here -->
+            </thead>
+            <tbody id="tableBody">
+                <!-- Data rows will be injected here -->
+            </tbody>
+        </table>
+    </div>
+
+    <div id="dhSSplitWrapper" class="dh-s-split">
+        <div class="dh-s-panel">
+            <div class="dh-s-panel-title">Bảng 1 - Đơn hàng unique</div>
+            <div class="table-wrapper">
+                <table>
+                    <thead id="dhSOrderHead"></thead>
+                    <tbody id="dhSOrderBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="dh-s-panel">
+            <div class="dh-s-panel-title">Bảng 2 - Chi tiết SKU</div>
+            <div class="table-wrapper">
+                <table>
+                    <thead id="dhSDetailHead"></thead>
+                    <tbody id="dhSDetailBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="imageManager">
+        <iframe
+            src="https://script.google.com/macros/s/AKfycbzi-W9OOmO_NzaBhSFKyQfWvIEJwWkD2hI-v2CmQHilH7uq3WuX10ZTTbQvuT7pmFR7/exec"
+            allow="geolocation; camera; microphone; clipboard-read; clipboard-write" title="Quản Lý Ảnh"></iframe>
+    </div>
+
+    <div id="pagination" class="pagination"></div>
+
+    <div id="thuChiModal" class="modal-mask">
+        <form class="modal-card" onsubmit="submitThuChiForm(event)">
+            <div class="modal-title">Thêm thu chi</div>
+            <div class="form-grid">
+                <label>Ngày<input type="date" id="thuChiNgayInput" required></label>
+                <label>Thu/chi
+                    <select id="thuChiLoaiInput" required>
+                        <option value="thu">thu</option>
+                        <option value="chi">chi</option>
+                    </select>
+                </label>
+                <label>Trường<input type="text" id="thuChiTruongInput" required></label>
+                <label>Mã đơn hàng<input type="text" id="thuChiMdhInput"></label>
+                <label>Mã vận đơn<input type="text" id="thuChiMvdInput"></label>
+                <label>Số tiền<input type="number" id="thuChiSoTienInput" required></label>
+                <label>Số tiền lợi nhuận<input type="number" id="thuChiSoTienLoiNhuanInput" required></label>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="secondary-btn" onclick="closeThuChiForm()">Hủy</button>
+                <button type="submit" class="action-btn action-success">
+                    <i data-lucide="save" style="width:18px;"></i> Lưu
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script src="assets/config.js"></script>
+    <script src="assets/dh-s.js"></script>
+    <script src="assets/joy.js"></script>
+</body>
+
+</html>

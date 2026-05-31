@@ -1,5 +1,5 @@
 const CONFIG = {
-    spreadsheetId: "1Bfz39faKp79G1BYEw7R0_2TZPF4vP2wZxOq7pvmNIkQ",
+    spreadsheetId: "19gZ6mR4UnKjZiWQc-W5CrCBKD7xz02Szd4Amlqvu99Y",
     serviceAccountEmail: "test-gia-ason@api-test-sheet-161.iam.gserviceaccount.com",
     privateKey: `-----BEGIN PRIVATE KEY-----
 MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC3NN84hLTkQPZd
@@ -58,8 +58,8 @@ sR2Sh8e3h3Knd6j1tceRIFU=
             fullHeaders: ["Mã đơn hàng", "Mã Kiện Hàng", "Ngày đặt hàng", "Trạng Thái Đơn Hàng", "Sản Phẩm Bán Chạy", "Lý do hủy", "Nhận xét từ Người mua", "Mã vận đơn", "Đơn Vị Vận Chuyển", "Phương thức giao hàng", "Loại đơn hàng", "Ngày giao hàng dự kiến", "Ngày gửi hàng", "Thời gian giao hàng", "Trạng thái Trả hàng/Hoàn tiền", "SKU sản phẩm", "Tên sản phẩm", "Cân nặng sản phẩm", "Tổng cân nặng", "Tên kho hàng", "SKU phân loại hàng", "Tên phân loại hàng", "Giá gốc", "Người bán trợ giá", "Được Shopee trợ giá", "Tổng số tiền được người bán trợ giá", "Giá ưu đãi", "Số lượng", "Số lượng sản phẩm được hoàn trả", "Tổng số tiền Người mua thanh toán", "Tổng giá trị đơn hàng (VND)", "Mã giảm giá của Shop", "Hoàn Xu", "Mã giảm giá của Shopee", "Chỉ tiêu Combo Khuyến Mãi", "Giảm giá từ combo Shopee", "Giảm giá từ Combo của Shop", "Shopee Xu được hoàn", "Số tiền được giảm khi thanh toán bằng thẻ Ghi nợ", "Trade-in Discount", "Trade-in Bonus", "Phí vận chuyển (dự kiến)", "Trade-in Bonus by Seller", "Phí vận chuyển mà người mua trả", "Phí vận chuyển tài trợ bởi Shopee (dự kiến)", "Phí vận chuyển trả hàng (đơn Trả hàng/hoàn tiền)", "Tổng số tiền người mua thanh toán", "Thời gian hoàn thành đơn hàng", "Thời gian đơn hàng được thanh toán", "Phương thức thanh toán", "Phí cố định", "Phí Dịch Vụ", "Phí thanh toán", "Tiền ký quỹ", "Người Mua", "Tên Người nhận", "Số điện thoại", "Tỉnh/Thành phố", "TP / Quận / Huyện", "Quận", "Địa chỉ nhận hàng", "Quốc gia", "Ghi chú", "ngay_up_don", "piship", "phi_thue", "phi_khac", "tien_thu_ve", "gia_sp", "loi_nhuan", "tinh_trang", "trang_thai"],
             headers: ['Mã đơn hàng', 'Ngày đặt hàng', 'Mã vận đơn', 'SKU phân loại hàng', 'Số lượng', 'Tổng số tiền Người mua thanh toán', 'Phí cố định', 'Phí Dịch Vụ', 'Phí thanh toán', 'Tiền ký quỹ', 'Người Mua', 'Tên Người nhận', 'Số điện thoại', 'Địa chỉ nhận hàng'],
             displayCols: [0, 2, 7, 20, 27, 29, 50, 51, 52, 53, 54, 55, 56, 60],
-            orderCols: [0, 2, 7, 63, 70, 71, 29, 50, 51, 52, 64, 65, 66, 67, 'tong_gia_sp', 69, 54, 'so_lan_mua', 55, 56, 60],
-            orderHeaders: ['Mã đơn hàng', 'Ngày đặt hàng', 'Mã vận đơn', 'ngay_up_don', 'tinh_trang', 'trang_thai', 'Tổng số tiền Người mua thanh toán', 'Phí cố định', 'Phí Dịch Vụ', 'Phí thanh toán', 'piship', 'phi_thue', 'phi_khac', 'tien_thu_ve', 'tổng giá sp', 'loi_nhuan', 'Người Mua', 'số lần mua', 'Tên Người nhận', 'Số điện thoại', 'Địa chỉ nhận hàng'],
+            orderCols: ['push_thu_chi', 2, 0, 7, 63, 70, 71, 29, 50, 51, 52, 64, 65, 66, 67, 'tong_gia_sp', 69, 54, 'so_lan_mua', 55, 56, 60],
+            orderHeaders: ['', 'Mã đơn hàng', 'Ngày đặt hàng', 'Mã vận đơn', 'ngay_up_don', 'tinh_trang', 'trang_thai', 'Tổng số tiền Người mua thanh toán', 'Phí cố định', 'Phí Dịch Vụ', 'Phí thanh toán', 'piship', 'phi_thue', 'phi_khac', 'tien_thu_ve', 'tổng giá sp', 'loi_nhuan', 'Người Mua', 'số lần mua', 'Tên Người nhận', 'Số điện thoại', 'Địa chỉ nhận hàng'],
             detailCols: [20, 27, 68],
             detailHeaders: ['SKU phân loại hàng', 'Số lượng', 'gia_sp'],
             priceCols: [5, 6, 7, 8, 9],
@@ -72,6 +72,17 @@ sR2Sh8e3h3Knd6j1tceRIFU=
             headers: ['id', 'mdh', 'SKU phân loại hàng', 'Số lượng', 'sku', 'sku_ct', 'ten_sp', 'slg', 'don_gia', 'thanh_tien'],
             priceCols: [8, 9],
             imgCol: -1
+        },
+        'THU_CHI': {
+            range: 'THU_CHI!A2:H',
+            clearRange: 'THU_CHI!A2:H100000',
+            headers: ['id', 'ngay', 'thu_chi', 'truong', 'mdh', 'mvd', 'so_tien', 'so_tien_loi_nhuan'],
+            hiddenCols: [0],
+            priceCols: [6, 7],
+            imgCol: -1
         }
     }
 };
+
+CONFIG.tabs.DH_S.orderCols = ['push_thu_chi', 2, 0, 7, 63, 70, 71, 29, 50, 51, 52, 64, 65, 66, 67, 'tong_gia_sp', 69, 54, 'so_lan_mua', 55, 56, 60];
+CONFIG.tabs.DH_S.orderHeaders = ['', 'Ngày đặt hàng', 'Mã đơn hàng', 'Mã vận đơn', 'ngay_up_don', 'tinh_trang', 'trang_thai', 'Tổng số tiền Người mua thanh toán', 'Phí cố định', 'Phí Dịch Vụ', 'Phí thanh toán', 'piship', 'phi_thue', 'phi_khac', 'tien_thu_ve', 'tổng giá sp', 'loi_nhuan', 'Người Mua', 'số lần mua', 'Tên Người nhận', 'Số điện thoại', 'Địa chỉ nhận hàng'];

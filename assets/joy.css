@@ -41,13 +41,49 @@ h1 {
 
 .page-heading {
     display: flex;
+    flex-direction: column;
     align-items: center;
+    justify-content: center;
     min-height: 106px;
     background: #fff;
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 16px 18px;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.dh-s-note-input {
+    display: none;
+    width: 100%;
+    min-height: 38px;
+    margin-top: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    resize: vertical;
+    outline: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.85rem;
+}
+
+.dh-s-note-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.dh-s-status-note {
+    display: none;
+    width: 100%;
+    margin-top: 10px;
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    color: #991b1b;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.35;
 }
 
 .header-actions {
@@ -208,6 +244,16 @@ h1 {
 .profit-summary strong {
     color: #e11d48;
     font-size: 0.95rem;
+}
+
+.revenue-summary {
+    border-color: #bae6fd;
+    background: #eff6ff;
+    color: #075985;
+}
+
+.revenue-summary strong {
+    color: #0369a1;
 }
 
 .action-btn {
@@ -653,6 +699,213 @@ body.sidebar-collapsed .tab.active::before {
     border-color: #b91c1c;
 }
 
+.btn-thu-chi {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #047857;
+    border-radius: 6px;
+    padding: 5px 9px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.btn-thu-chi:hover:not(:disabled) {
+    background: #047857;
+    color: #fff;
+}
+
+.btn-thu-chi.added {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #92400e;
+}
+
+.btn-thu-chi.added:hover:not(:disabled) {
+    background: #f59e0b;
+    color: #fff;
+}
+
+.btn-thu-chi:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.modal-mask {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.35);
+    padding: 18px;
+}
+
+.modal-card {
+    width: min(560px, 100%);
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.2);
+    padding: 18px;
+}
+
+.modal-title {
+    color: var(--primary);
+    font-size: 1rem;
+    font-weight: 800;
+    margin-bottom: 14px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.form-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: #475569;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.form-grid input,
+.form-grid select {
+    height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0 10px;
+    color: var(--text);
+    font: inherit;
+    outline: none;
+}
+
+.form-grid input:focus,
+.form-grid select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.secondary-btn {
+    height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    color: #475569;
+    padding: 0 14px;
+    cursor: pointer;
+    font-weight: 800;
+}
+
+#toastContainer {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+    pointer-events: none;
+}
+
+.toast {
+    max-width: min(420px, calc(100vw - 36px));
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text);
+    padding: 10px 12px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+    font-size: 0.86rem;
+    font-weight: 700;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.18s, transform 0.18s;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-success {
+    border-color: #a7f3d0;
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.toast-error {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.toast-warning {
+    border-color: #fde68a;
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.confirm-mask {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 2500;
+    display: none;
+    align-items: flex-end;
+    justify-content: flex-end;
+    pointer-events: none;
+}
+
+.confirm-card {
+    width: min(420px, 100%);
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
+    padding: 16px;
+    pointer-events: auto;
+}
+
+.confirm-title {
+    color: var(--primary);
+    font-size: 0.95rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.confirm-message {
+    color: var(--text);
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
+.confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+@media (max-width: 640px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .status-select {
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -661,6 +914,37 @@ body.sidebar-collapsed .tab.active::before {
     color: var(--text);
     font-weight: 700;
     min-width: 120px;
+}
+
+.row-status-buttons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 300px;
+}
+
+.row-status-btn {
+    height: 28px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    color: #64748b;
+    padding: 0 7px;
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.row-status-btn.active {
+    border-color: var(--primary);
+    background: #eef2ff;
+    color: var(--primary);
+}
+
+.row-status-btn:hover:not(.active) {
+    background: #f8fafc;
+    color: var(--primary);
 }
 
 .editable-cell {
@@ -678,4 +962,11 @@ body.sidebar-collapsed .tab.active::before {
     border-color: var(--primary);
     outline: none;
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.money-editable-cell {
+    color: #e11d48;
+    font-weight: 700;
+    min-width: 110px;
+    text-align: right;
 }
